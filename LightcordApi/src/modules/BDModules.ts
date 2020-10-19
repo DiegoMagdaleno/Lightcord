@@ -80,3 +80,41 @@ function setReq(){
         req = undefined
     }
 }
+
+class DangerousWebpackloader {
+    get modules(){
+        if(req){
+            return Object.values(req.c).filter((e:any) => e && e.exports)
+        }else{
+            setReq()
+            if(req){
+                return Object.values(req.c).filter((e:any) => e && e.exports)
+            }else{
+                return []
+            }
+        }
+    }
+    get(ids, modules?){
+        if(typeof ids === "function"){
+            return (modules || this.modules).map((mdl) => {
+                if(mdl && typeof mdl.exports !== "undefined"){
+                    return mdl.exports
+                }else{
+                    return null
+                }
+            }).filter(e => e).filter(ids)
+        }else if(Array.isArray(ids)){
+            modules = modules || this.modules
+            return ids.map(id => this.get(id, modules))
+        }else{
+            modules = modules || this.modules
+            let module = modules.filter(e => !!e).find(e => e.i === ids)
+            if(!module)return undefined
+            return module.exports
+        }
+    }
+    get default(){
+        return this
+    }
+}
+export const dangerousBDModules = new DangerousWebpackloader()

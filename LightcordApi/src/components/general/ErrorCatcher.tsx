@@ -8,7 +8,7 @@ import AlertBox from "./AlertBox";
 
 
 type ErrorCatcherProps = {
-    children: ReactNode
+    children?: ReactNode
 }
 let ErrorCatcherModules
 export default class ErrorCatcher extends React.Component<ErrorCatcherProps, {error: boolean, hasSentNotification: boolean}> {

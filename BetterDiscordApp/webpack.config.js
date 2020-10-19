@@ -1,6 +1,7 @@
 const path = require("path");
 const CircularDependencyPlugin = require("circular-dependency-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
+const child_process = require("child_process")
 
 module.exports = {
   mode: "development",
@@ -67,7 +68,8 @@ module.exports = {
       new TerserPlugin({
         terserOptions: {
           compress: {drop_debugger:false}
-        }
+        },
+        sourceMap: true
       })
     ]
   }

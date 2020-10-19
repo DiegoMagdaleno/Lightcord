@@ -3,7 +3,7 @@ import { ReactNode } from "react"
 import Utils from "../../modules/Utils"
 
 type SettingSubTitleProps = {
-    children: ReactNode
+    children?: ReactNode
     className?: string
 }
 

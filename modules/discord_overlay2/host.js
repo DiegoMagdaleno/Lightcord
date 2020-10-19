@@ -11,10 +11,12 @@ var Backoff = require('./Backoff');
 
 var _require = require('electron'),
     BrowserWindow = _require.BrowserWindow,
-    shell = _require.shell,
     _ipcMain = _require.ipcMain;
 
 var Overlay = require('./overlay_module.js');
+
+var _require2 = require('./securityUtils'),
+    saferShellOpenExternal = _require2.saferShellOpenExternal;
 
 var path = require('path'); // IPC events must be prefixed with `DISCORD_`
 
@@ -27,8 +29,8 @@ var ipcMain = {
     return _ipcMain.removeListener("DISCORD_".concat(event), callback);
   }
 };
-ipcMain.on('OPEN_EXTERNAL_URL', function (e, url) {
-  shell.openExternal(url);
+ipcMain.on('OPEN_EXTERNAL_URL', function (e, externalUrl) {
+  saferShellOpenExternal(externalUrl);
 });
 
 function webContentsSend(win, event) {
@@ -83,8 +85,8 @@ function createRenderer(pid, url) {
     return;
   }
 
-  var _require2 = require('url'),
-      URL = _require2.URL;
+  var _require3 = require('url'),
+      URL = _require3.URL;
 
   var urlWithPid = new URL(url);
   urlWithPid.searchParams.append('pid', pid.toString());
@@ -101,7 +103,9 @@ function createRenderer(pid, url) {
         offscreen: true,
         transparent: true,
         nodeIntegration: false,
-        preload: path.join(__dirname, '..', 'discord_desktop_core', 'core.asar', 'app', 'mainScreenPreload.js')
+        preload: path.join(__dirname, '..', 'discord_desktop_core', 'core', 'app', 'mainScreenPreload.js'),
+        enableRemoteModule: false,
+        contextIsolation: true
       }
     })
   };
@@ -303,6 +307,10 @@ function destroyRenderer(pid) {
   delete renderers[pid];
 }
 
+function needsTranslation(event) {
+  return 'msg' in event || !'type' in event;
+}
+
 function eventHandler(pid, event) {
   var renderer = renderers[pid];
 
@@ -339,7 +347,7 @@ function eventHandler(pid, event) {
     renderer.window.webContents.invalidate();
   } else if (event.message === 'input_event') {
     renderer.window.focusOnWebView();
-    var translated = Overlay.translateInputEvent(event);
+    var translated = needsTranslation(event) ? Overlay.translateInputEvent(event) : event;
 
     if (translated) {
       if (!handleAccelerators(renderer.window.webContents, translated)) {

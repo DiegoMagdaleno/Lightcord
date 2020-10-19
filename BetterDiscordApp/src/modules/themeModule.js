@@ -129,7 +129,7 @@ ThemeModule.prototype.edit = function(filenameOrName) {
     const bdplugin = Object.values(bdthemes).find(p => p.filename == filenameOrName) || bdthemes[filenameOrName];
     if (!bdplugin) return;
     const fullPath = require("path").resolve(ContentManager.themesFolder, bdplugin.filename);
-    require("electron").shell.openItem(`${fullPath}`);
+    require("electron").shell.openExternal(`${fullPath}`);
 };
 
 ThemeModule.prototype.updateThemeList = function() {

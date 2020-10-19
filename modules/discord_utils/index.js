@@ -1,14 +1,7 @@
 const execa = require('execa');
 const superagent = require('superagent');
 
-let addon = './discord_utils.node'
-if(process.platform === "linux"){
-  addon = './discord_utils_linux.node'
-} else if (process.platform === "darwin"){
-  addon = './discord_utils_darwin.node'
-}
-
-module.exports = require(addon);
+module.exports = require('./discord_utils_'+process.platform+'.node');
 module.exports.clearCandidateGamesCallback = module.exports.setCandidateGamesCallback;
 
 function parseNvidiaSmiOutput(result) {
@@ -54,4 +47,11 @@ module.exports.submitLiveCrashReport = async (channel, sentryMetadata) => {
     .attach('upload_file_minidump', path)
     .field('channel', channel)
     .field('sentry', JSON.stringify(sentryMetadata));
+};
+
+// [adill] safe to remove once the web code from
+// https://github.com/discord/discord/commit/ced0cd30085f9406e22ee43f77888591156ef58a is deployed everywhere
+// ~ETA 5/20/20
+module.exports.inputGetIdleMilliseconds = (callback) => {
+  callback(0);
 };

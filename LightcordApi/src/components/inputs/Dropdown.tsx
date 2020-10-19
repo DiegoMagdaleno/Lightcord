@@ -72,6 +72,7 @@ export default class Dropdown extends React.Component<DropdownProps, {value: str
     }
 
     onChange(value){
+        value = value ? value.value : null
         this.props.onChange(value)
         this.setState({
             value: value

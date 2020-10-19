@@ -1,4 +1,4 @@
-const KrispModule = require('./discord_krisp.node');
+const KrispModule = require('./discord_krisp_'+process.platform+'.node');
 
 KrispModule._initialize();
 

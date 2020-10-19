@@ -1,5 +1,3 @@
-const __non_webpack_require__ = window.require
-
 import Utils from "./utils";
 import ContentManager from "./contentManager";
 
@@ -40,15 +38,6 @@ export default new class DataStore {
 
     get injectionPath() {
         return this._injectionPath = null;
-        if (this._injectionPath) return this._injectionPath;
-        const electron = require("electron").remote.app;
-        const base = electron.getAppPath();
-        const roamingBase = electron.getPath("userData");
-        const roamingLocation = path.resolve(roamingBase, electron.getVersion(), "modules", "discord_desktop_core", "injector");
-        const location = path.resolve(base, "..", "app");
-        const realLocation = fs.existsSync(location) ? location : fs.existsSync(roamingLocation) ? roamingLocation : null;
-        if (!realLocation) return this._injectionPath = null;
-        return this._injectionPath = realLocation;
     }
 
     get configFile() {return this._configFile || (this._configFile = path.resolve(this.injectionPath, "betterdiscord", "config.json"));}

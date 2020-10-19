@@ -4,8 +4,14 @@ const terser = require("terser")
 const util = require("util")
 
 const production = true
+const includeSourcesMaps = true
 
 let fs = require("fs")
+
+exports.default = async function beforeBuild(context){
+    await main()
+    return true
+}
 
 console.log = (...args) => {
     process.stdout.write(Buffer.from(util.formatWithOptions({colors: true}, ...args)+"\n", "binary").toString("utf8"))
@@ -13,92 +19,129 @@ console.log = (...args) => {
 console.info = (...args) => {
     console.log(`\x1b[34m[INFO]\x1b[0m`, ...args)
 }
+let commit = child_process.execSync("git rev-parse HEAD").toString().split("\n")[0].trim()
+console.info(`Obtained commit ${commit} for the build`)
+    
+async function processNextDir(folder, folders, predicate, compile, ignoreModules){
+    if(typeof ignoreModules === "undefined")ignoreModules = false
+    let files = fs.readdirSync(folder, {withFileTypes: true})
+    for(let file of files){
+        if(file.isFile()){
+            let isMinified = file.name.endsWith(".min.js") || file.name.endsWith(".min.css")
+            let filepath = path.join(folder, file.name)
+            let type = file.name.split(".").pop().toLowerCase()
+            if(type === file.name)type = ""
+            if([
+                "ts",
+                "md",
+                "gitignore",
+                "map"
+            ].includes(type)){
+                console.warn(`\x1b[33mIgnored file ${path.relative(folders.startDir, filepath)} because of type ${type}\x1b[0m`)
+                continue
+            }
+            if([
+                "tsconfig.json",
+                "webpack.config.js"
+            ].includes(file.name)){
+                console.warn(`\x1b[33mIgnored file ${path.relative(folders.startDir, filepath)} because of name ${file.name}\x1b[0m`)
+                continue
+            }
+            if(folders.exclude && folders.exclude.test(filepath)){
+                console.warn(`\x1b[33mIgnored file ${path.relative(folders.startDir, filepath)} because regex\x1b[0m`)
+                continue
+            } 
+            let hasMinifiedVersion = (type === "js" || type === "css") && !isMinified && files.find(f => {
+                return f.name === file.name.split(".").slice(0, -1).join(".")+".min."+type
+            })
+            if(hasMinifiedVersion){
+                console.warn(`\x1b[33mIgnored file ${path.relative(folders.startDir, filepath)} because it has a minified version.\x1b[0m`)
+                continue
+            }  
+            if(!isMinified && predicate(filepath) && filepath.split(/[\\/]+/).reverse()[1] !== "js"){
+                await compile(filepath, path.join(filepath.replace(folders.startDir, folders.newDir)), "..")
+            }else{
+                if(["js", "css"].includes(type)){
+                    if(!includeSourcesMaps){
+                        console.log(`We don't include sourcemap for this build. Skipping ${file.name}.`)
+                        return await fs.promises.copyFile(filepath, filepath.replace(folders.startDir, folders.newDir))
+                    }
+                    let fileContent = (await fs.promises.readFile(filepath, "utf8"))
+                    let sourceMap = fileContent.split(/[\n\r]+/g).pop()
+                    if(!sourceMap || !sourceMap.startsWith("//# sourceMappingURL=")){
+                        console.log(`This file doesn't have sourcemap. ${file.name}.`)
+                        await fs.promises.copyFile(filepath, filepath.replace(folders.startDir, folders.newDir))
+                        continue
+                    }
+                    let sourceMapContent
+                    if(sourceMap.slice(21).startsWith("data:")){
+                        console.log(`Extracting sourcemap from data uri. From file ${file.name}.`)
+                        sourceMapContent = Buffer.from(sourceMap.split("=").slice(1).join("="), "base64").toString("utf-8")
+                    }else{
+                        console.log(`Extracting sourcemap from file ${file.name}.map.`)
+                        await fs.promises.copyFile(filepath, filepath.replace(folders.startDir, folders.newDir))
+                        sourceMapContent = await fs.promises.readFile(path.join(folder, sourceMap.slice(21)), "utf8")
+                    }
+                    sourceMapContent = JSON.parse(sourceMapContent)
+                    sourceMapContent.sourcesContent = []
+                    let sourceMapPath = filepath + ".map"
+                    fileContent = fileContent
+                    // source map
+                    .replace(sourceMap, "//# sourceMappingURL="+filepath.split(/[\\\/]+/g).pop()+".map")
+                    await fs.promises.writeFile(filepath.replace(folders.startDir, folders.newDir), fileContent)
+                    await fs.promises.writeFile(filepath.replace(folders.startDir, folders.newDir)+".map", JSON.stringify(sourceMapContent))
+                }else{
+                    await fs.promises.copyFile(filepath, filepath.replace(folders.startDir, folders.newDir))
+                }
+            }
+        }else if(file.isDirectory()){
+            if(ignoreModules && file.name === "node_modules")continue
+            if(folders.exclude && folders.exclude.test(path.join(folder, file.name)))continue 
+            await fs.promises.mkdir(path.join(folder, file.name).replace(folders.startDir, folders.newDir), {recursive: true})
+            await processNextDir(path.join(folder, file.name), ...Array.from(arguments).slice(1))
+        }
+    }
+}
 
 async function main(){
-    console.log(__dirname, process.cwd())
+    let startTimestamp = Date.now()
+    console.info("Starting build")
     
     console.info("Reseting existent directory...")
     await fs.promises.rmdir("./distApp", {"recursive": true})
     await fs.promises.mkdir(__dirname+"/distApp/dist", {"recursive": true})
     
     console.info("Executing command `npm run compile`")
-    console.log(child_process.execSync("npm run compile", {encoding: "binary"}))
+    child_process.execSync("npm run compile", {
+        encoding: "binary",
+        stdio: "inherit"
+    })
     
     let startDir = path.join(__dirname, "./dist")
     let newDir = path.join(__dirname, "./distApp/dist")
     console.info("No error detected. Copying files from "+startDir+".")
     await fs.promises.mkdir(startDir, {recursive: true})
-    
-    async function processNextDir(folder, folders, predicate, compile, ignoreModules){
-        if(typeof ignoreModules === "undefined")ignoreModules = false
-        let files = fs.readdirSync(folder, {withFileTypes: true})
-        for(let file of files){
-            if(file.isFile()){
-                let isMinified = file.name.endsWith(".min.js") || file.name.endsWith(".min.css")
-                let filepath = path.join(folder, file.name)
-                let type = file.name.split(".").pop().toLowerCase()
-                if(type === file.name)type = ""
-                if([
-                    "ts",
-                    "md",
-                    "gitignore"
-                ].includes(type)){
-                    console.warn(`\x1b[33mIgnored file ${path.relative(folders.startDir, filepath)} because of type ${type}\x1b[0m`)
-                    continue
-                }
-                if([
-                    "tsconfig.json",
-                    "webpack.config.js"
-                ].includes(file.name)){
-                    console.warn(`\x1b[33mIgnored file ${path.relative(folders.startDir, filepath)} because of name ${file.name}\x1b[0m`)
-                    continue
-                }
-                if(folders.exclude && folders.exclude.test(filepath)){
-                    console.warn(`\x1b[33mIgnored file ${path.relative(folders.startDir, filepath)} because regex\x1b[0m`)
-                    continue
-                } 
-                let hasMinifiedVersion = (type === "js" || type === "css") && !isMinified && files.find(f => {
-                    return f.name === file.name.split(".").slice(0, -1).join(".")+".min."+type
-                })
-                if(hasMinifiedVersion){
-                    console.warn(`\x1b[33mIgnored file ${path.relative(folders.startDir, filepath)} because it has a minified version.\x1b[0m`)
-                    continue
-                }  
-                if(!isMinified && predicate(filepath) && filepath.split(/[\\/]+/).reverse()[1] !== "js"){
-                    await compile(filepath, path.join(filepath.replace(folders.startDir, folders.newDir)), "..")
-                }else{
-                    await fs.promises.copyFile(filepath, filepath.replace(folders.startDir, folders.newDir))
-                }
-            }else if(file.isDirectory()){
-                if(ignoreModules && file.name === "node_modules")continue
-                if(folders.exclude && folders.exclude.test(path.join(folder, file.name)))continue 
-                await fs.promises.mkdir(path.join(folder, file.name).replace(folders.startDir, folders.newDir), {recursive: true})
-                await processNextDir(path.join(folder, file.name), ...Array.from(arguments).slice(1))
-            }
-        }
-    }
+
     await processNextDir(startDir, {
         startDir,
         newDir
-    }, ((filepath) => filepath.endsWith(".js") && (!production ? !filepath.includes("node_modules") : true)), async (filepath, newpath) => {
+    }, ((filepath) => filepath.endsWith(".js")), async (filepath, newpath) => {
         console.info(`Minifying ${filepath} to ${newpath}`)
 
         if(filepath.endsWith("git.js")){
-            let commit = child_process.execSync("git rev-parse HEAD").toString().split("\n")[0].trim()
-            console.info(`Obtained commit ${commit} for the build`)
             await fs.promises.writeFile(newpath, terser.minify(fs.readFileSync(filepath, "utf8").replace(/"{commit}"/g, `"${commit}"`)).code, "utf8")
         }else{
             await fs.promises.writeFile(newpath, terser.minify(await fs.promises.readFile(filepath, "utf8")).code, "utf8")
         }
-    }).then(() => {
+    }, true).then(() => {
         console.info(`Copied files and minified them from ${startDir}.`)
     })
     
     await processNextDir(path.join(__dirname, "modules"), {
         startDir: path.join(__dirname, "modules"),
-        newDir: path.join(__dirname, "distApp", "modules")
-    }, ((filepath) => filepath.endsWith(".js") && (!production ? !filepath.includes("node_modules") : true)), async (filepath, newpath) => {
-        if(filepath.includes("node_modules"))return // don't minify node_modules, and don't include them at all. Installing later
+        newDir: path.join(__dirname, "distApp", "modules"),
+        exclude: /discord_spellcheck/g
+    }, ((filepath) => filepath.endsWith(".js")), async (filepath, newpath) => {
         console.info(`Minifying ${filepath} to ${newpath}`)
         await fs.promises.writeFile(newpath, terser.minify(await fs.promises.readFile(filepath, "utf8")).code, "utf8")
     }, true).then(() => {
@@ -117,36 +160,47 @@ async function main(){
         }
     
         console.info(`Installing modules for ${mdl}`)
-        console.log(child_process.execSync("npm install --only=prod", {
+        child_process.execSync("npm install --only=prod", {
             encoding: "binary",
-            cwd: dir
-        }))
+            cwd: dir,
+            stdio: "inherit"
+        })
     }))
+
+    await fs.promises.mkdir(path.join(__dirname, "distApp", "modules", "discord_spellcheck"), {recursive: true})
+    await processNextDir(path.join(__dirname, "modules", "discord_spellcheck"), {
+        startDir: path.join(__dirname, "modules", "discord_spellcheck"),
+        newDir: path.join(__dirname, "distApp", "modules", "discord_spellcheck")
+    }, ((filepath) => filepath.endsWith(".js")), async (filepath, newpath) => {
+        console.info(`Minifying ${filepath} to ${newpath}`)
+        await fs.promises.writeFile(newpath, terser.minify(await fs.promises.readFile(filepath, "utf8")).code, "utf8")
+    }, false).then(() => {
+        console.info(`Copied files and minified them from ${path.join(__dirname, "modules")}.`)
+    })
 
     await processNextDir(path.join(__dirname, "LightcordApi"), {
         startDir: path.join(__dirname, "LightcordApi"),
         newDir: path.join(__dirname, "distApp", "LightcordApi"),
-        exclude: /(src|webpack\.config\.js|tsconfig\.json|dist)/g
+        exclude: /(src|webpack\.config\.js|tsconfig\.json|dist|docs)/g
     }, ((filepath) => filepath.endsWith(".js") && (!production ? !filepath.includes("node_modules") : true)), async (filepath, newpath) => {
-        if(filepath.includes("node_modules"))return // don't minify node_modules, and don't include them at all. Installing later
-        console.info(`Minifying ${filepath} to ${newpath}`)
-        await fs.promises.writeFile(newpath, terser.minify(await fs.promises.readFile(filepath, "utf8")).code, "utf8")
+        await fs.promises.copyFile(filepath, newpath)
     }, true).then(() => {
         console.info(`Copied files and minified them from ${path.join(__dirname, "LightcordApi")}.`)
     })
     
-    console.log(child_process.execSync("npm install --only=prod", {
+    child_process.execSync("npm install --only=prod", {
         encoding: "binary",
-        cwd: path.join(__dirname, "distApp", "LightcordApi")
-    }))
+        cwd: path.join(__dirname, "distApp", "LightcordApi"),
+        stdio: "inherit"
+    })
 
     function processDJS(dir){
         fs.mkdirSync(path.join(__dirname, "distApp", "DiscordJS", dir), {recursive: true})
         return processNextDir(path.join(__dirname, "DiscordJS", dir), {
             startDir: path.join(__dirname, "DiscordJS", dir),
-            newDir: path.join(__dirname, "distApp", "DiscordJS", dir)
-        }, ((filepath) => filepath.endsWith(".js") && (!production ? !filepath.includes("node_modules") : true)), async (filepath, newpath) => {
-            if(filepath.includes("node_modules"))return // don't minify node_modules, and don't include them at all
+            newDir: path.join(__dirname, "distApp", "DiscordJS", dir),
+            exclude: /node_modules/g
+        }, ((filepath) => filepath.endsWith(".js")), async (filepath, newpath) => {
             console.info(`Minifying ${filepath} to ${newpath}`)
             await fs.promises.writeFile(newpath, terser.minify(await fs.promises.readFile(filepath, "utf8")).code, "utf8")
         }).then(() => {
@@ -160,21 +214,39 @@ async function main(){
     await processDJS("dist")
     await copyFileDJS("package.json")
     
-    console.log(child_process.execSync("npm install --only=prod", {
+    child_process.execSync("npm install --only=prod", {
         encoding: "binary",
-        cwd: path.join(__dirname, "distApp", "DiscordJS")
-    }))
+        cwd: path.join(__dirname, "distApp", "DiscordJS"),
+        stdio: "inherit"
+    })
     
     fs.mkdirSync(path.join(__dirname, "distApp", "BetterDiscordApp", "dist"), {recursive: true})
     const BDPackageJSON = require("./BetterDiscordApp/package.json")
     fs.writeFileSync(path.join(__dirname, "distApp", "BetterDiscordApp", "package.json"), JSON.stringify(BDPackageJSON), "utf8")
-    fs.writeFileSync(path.join(__dirname, "distApp", "BetterDiscordApp", "dist", "style.min.css"), fs.readFileSync(path.join(__dirname, "BetterDiscordApp", "dist", "style.min.css")))
-    fs.writeFileSync(path.join(__dirname, "distApp", "BetterDiscordApp", "dist", "index.min.js"), fs.readFileSync(path.join(__dirname, "BetterDiscordApp", "dist", "index.min.js")))
-
+    const files = [
+        "index.min.js",
+        "style.min.css"
+    ]
+    files.forEach(e => {
+        files.push(e + ".map")
+    })
+    files.forEach(e => {
+        const pth = path.join(__dirname, "BetterDiscordApp", "dist", e)
+        if(!fs.existsSync(pth))return console.error(`\x1b[31mFile ${pth} from betterdiscord does not exist.\x1b[0m`)
+        if(e.endsWith(".map")){
+            const data = JSON.parse(fs.readFileSync(pth, "utf8"))
+            data.sourcesContent = []
+            fs.writeFileSync(path.join(__dirname, "distApp", "BetterDiscordApp", "dist", e), JSON.stringify(data))
+        }else{
+            fs.copyFileSync(pth, path.join(__dirname, "distApp", "BetterDiscordApp", "dist", e))
+        }
+    })
+    
     await fs.promises.mkdir(path.join(__dirname, "distApp", "splash", "videos"), {recursive: true})
     await processNextDir(path.join(__dirname, "splash"), {
         startDir: path.join(__dirname, "splash"),
-        newDir: path.join(__dirname, "distApp", "splash")
+        newDir: path.join(__dirname, "distApp", "splash"),
+        exclude: /node_modules/g
     }, (filepath) => {
         if(filepath.endsWith(".js"))return true
         return false
@@ -189,15 +261,17 @@ async function main(){
     let packageJSON = require("./package.json")
     packageJSON.scripts["build:electron_linux"] = packageJSON.scripts["build:electron_linux"].replace("./distApp", ".")
     packageJSON.scripts["build:electron_win"] = packageJSON.scripts["build:electron_win"].replace("./distApp", ".")
-    packageJSON.scripts["build:electron_darwin"] = packageJSON.scripts["build:electron_darwin"].replace("./distApp", ".")
+    packageJSON.scripts["build:electron_mac"] = packageJSON.scripts["build:electron_mac"].replace("./distApp", ".")
     
     fs.writeFileSync(path.join(__dirname, "distApp", "package.json"), JSON.stringify(packageJSON), "utf8")
     
     console.info(`Installing ${Object.keys(packageJSON.dependencies).length} packages...`)
-    console.log(child_process.execSync("npm install --only=prod", {
+    child_process.execSync("npm install --only=prod", {
         encoding: "binary",
-        cwd: path.join(__dirname, "distApp")
-    }))
+        cwd: path.join(__dirname, "distApp"),
+        stdio: "inherit"
+    })
+    console.info("Build took "+(Date.now() - startTimestamp) +"ms.")
 }
 main()
 .catch(err => {

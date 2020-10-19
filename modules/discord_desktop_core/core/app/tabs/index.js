@@ -48,7 +48,7 @@ ipc.on("RELOAD", () => {
     webview.reload()
 })
 ipc.on("NEW_TAB", () => {
-    chromeTabs.addTab({
+    chrtabs.addTab({
         title: 'Lightcord',
         favicon: faviconURL
     })
@@ -56,14 +56,14 @@ ipc.on("NEW_TAB", () => {
 ipc.on("CLOSE_TAB", () => {
     let active = document.querySelector("div.chrome-tab[active]")
     if(!active)return
-    chromeTabs.removeTab(active)
+    chrtabs.removeTab(active)
 })
 ipc.on("OPEN_DEVTOOLS", () => {
     let webview = webviews.get(document.querySelector(".chrome-tab[active]"))
     if(!webview)return
     webview.openDevTools()
 })
-
+let chrtabs
 window.onload = () => {
     const ChromeTabs = require("chrome-tabs")
     require("chrome-tabs/css/chrome-tabs.css")
@@ -72,6 +72,7 @@ window.onload = () => {
 
     let tabs = document.querySelector(".chrome-tabs")
     let chromeTabs = new ChromeTabs()
+    chrtabs = chromeTabs
     chromeTabs.init(tabs)
 
     tabs.addEventListener('activeTabChange', ({detail}) => {
@@ -93,21 +94,14 @@ window.onload = () => {
         webview.src = "https://discord.com/app"
         webview.classList.add("discord-webview")
         webview.classList.add("webview-active")
-        webview.setAttribute("preload", pathToFileURL(join(__dirname, "../mainScreenPreload.js")))
+        webview.setAttribute("preload", pathToFileURL(join(__dirname, "../tabPreload.js")))
         webview.shadowRoot.childNodes.item(1).style.height = "100%"
         webview.enableremotemodule = true
         webview.nodeintegration = false
+        webview.spellcheck = true
         webview.webpreferences = "nativeWindowOpen=yes"
         webview.enableblinkfeatures = "EnumerateDevices,AudioOutputDevices"
-        webview.addEventListener("ipc-message", function(...ev){ // TODO: Why don't we receive Ipc Messages, but they get processed anyway (notification, etc) ?
-            console.log(ev[0].channel)
-            if(ev[0].channel === "DISCORD_NEW_TAB"){
-                chromeTabs.addTab({
-                    title: 'Lightcord',
-                    favicon: faviconURL
-                })
-                return
-            }
+        webview.addEventListener("ipc-message", function(...ev){
             ipc.send(ev[0].channel.replace("DISCORD_", ""), ev.slice(1))
         })
         webview.addEventListener('page-title-updated', () => {
@@ -124,7 +118,6 @@ window.onload = () => {
         webview.ready = new Promise(resolve => (r = resolve))
         webview.addEventListener("dom-ready", () => {
             r()
-            webview.send("DISCORD_IS_TAB")
         })
         webview.addEventListener("will-navigate", (e) => {
             e.preventDefault()

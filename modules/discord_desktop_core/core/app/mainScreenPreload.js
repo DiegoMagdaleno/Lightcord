@@ -9,8 +9,7 @@ const ipcRenderer = require('./discord_native/renderer/ipc');
 const electron = require("electron")
 const moduleAlias = require("./BetterDiscord/loaders/module-alias")
 const path = require("path")
-
-electron.remote.getCurrentWindow().setBackgroundColor("#2f3136")
+const Buffer = require("safe-buffer").Buffer
 
 moduleAlias.setMain(module)
 moduleAlias.addAlias("@lightcord/api", path.join(__dirname, "../../../../LightcordApi"))
@@ -26,10 +25,7 @@ ipcRenderer.on(TRACK_ANALYTICS_EVENT, e => {
   e.sender.send(TRACK_ANALYTICS_EVENT_COMMIT);
 });
 
-global.isTab = false
-ipcRenderer.on("IS_TAB", (ev) => {
-  global.isTab = true
-})
+global.isTab = !!global.isTab
 
 
 const DiscordNative = {
@@ -79,14 +75,13 @@ process.once('loaded', () => {
   // to write code / debug
   window.global = window
   global.Buffer = Buffer
-  global.require = require
 
   global.setImmediate = function(callback, ...args){
     return setTimeout(callback, 0, ...args);
   };
   global.clearImmediate = clearTimeout;
 
-  const buildInfo = electron.remote.getGlobal("BuildInfo")
+  const buildInfo = electron.ipcRenderer.sendSync("LIGHTCORD_GET_BUILD_INFOS")
   console.log("%c%s", "color: #3767ad;font-size:25px", 'Lightcord Client\nhttps://github.com/Lightcord/Lightcord');
   console.log("%c%s", "font-size:15px", `Version: ${buildInfo.version}\nCommit: ${buildInfo.commit || "Unknown"}`)
 
@@ -103,16 +98,5 @@ process.once('loaded', () => {
         return false
       }
     }catch(e){}
-    setTimeout(() => {
-      electron.remote.getCurrentWindow().setBackgroundColor("#00000000")
-    }, 500);
   })
-
-  const webRequest = electron.remote.getCurrentWebContents().session.webRequest
-
-  // disable Discord's tracking request, error in console
-  webRequest.onBeforeRequest((details, callback) => {
-    if(/api\/v\d\/science/g.test(details.url))return callback({cancel: true})
-    return callback({})
-  })
-});
+})

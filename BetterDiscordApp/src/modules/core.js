@@ -1,4 +1,4 @@
-import {bdConfig, minSupportedVersion, bbdVersion, settingsCookie, bdpluginErrors, bdthemeErrors, bbdChangelog, defaultCookie, currentDiscordVersion, defaultRPC, settingsRPC} from "../0globals";
+import {bdConfig, minSupportedVersion, bbdVersion, settingsCookie, bdpluginErrors, bdthemeErrors, bbdChangelog, defaultCookie, currentDiscordVersion, defaultRPC, settingsRPC, lightcordSettings} from "../0globals";
 import Utils from "./utils";
 
 import BDV2 from "./v2";
@@ -11,11 +11,11 @@ import DOM from "./domtools";
 
 import BDLogo from "../ui/bdLogo";
 import TooltipWrap from "../ui/tooltipWrap";
-import LightcordLogo from "../svg/lightcord";
+import LightcordLogo from "../svg/Lightcord";
 import PluginCertifier from "./pluginCertifier";
 import distant, { uuidv4 } from "./distant";
 import EmojiModule from "./emojiModule"
-import {remote as electron} from "electron"
+import * as electron from "electron"
 import v2 from "./v2";
 import contentManager from "./contentManager";
 
@@ -195,6 +195,7 @@ Core.prototype.patchAttributes = async function() {
 
             return div
         }
+        DiscordTag.default.displayName = DiscordTagComp.displayName
     })
 
     attribsPatchs.push(Utils.monkeyPatch(v2.MessageComponent, "default", {after: (data) => {
@@ -231,13 +232,11 @@ Core.prototype.injectExternals = async function() {
 
 Core.prototype.initSettings = function () {
     DataStore.initialize();
-    if(!DataStore.getSettingGroup("settings") && !DataStore.getSettingGroup("rpc")){
-        if (!DataStore.getSettingGroup("settings")) {
+    if(!DataStore.getSettingGroup("rpc")){
+        Object.assign(settingsRPC, defaultRPC);
+    }
+    if(!DataStore.getSettingGroup("settings")){
             Object.assign(settingsCookie, defaultCookie);
-        }
-        if (!DataStore.getSettingGroup("rpc")) {
-            Object.assign(settingsRPC, defaultRPC);
-        }
         settingsPanel.saveSettings();
     } else {
         settingsPanel.loadSettings();
@@ -270,6 +269,7 @@ Core.prototype.initSettings = function () {
                     result.push(poped.pop())
                 }
             }
+            console.log(result)
             return result
         }
     })
@@ -375,8 +375,9 @@ Core.prototype.patchSocial = function() {
         ]
 
         const versionHash = `(${bdConfig.hash ? bdConfig.hash.substring(0, 7) : bdConfig.branch})`;
+        const buildInfo = electron.ipcRenderer.sendSync("LIGHTCORD_GET_BUILD_INFOS")
         const additional = [
-            BDV2.react.createElement("div", {className: `${classNameColorMuted} ${sizes.size12}`}, `Lightcord ${electron.getGlobal("BuildInfo").version} `, BDV2.react.createElement("span", {className: classNameVersionHash+" da-versionHash"}, `(${(electron.getGlobal("BuildInfo").commit || "Unknown").slice(0, 7)})`)),
+            BDV2.react.createElement("div", {className: `${classNameColorMuted} ${sizes.size12}`}, `Lightcord ${buildInfo.version} `, BDV2.react.createElement("span", {className: classNameVersionHash+" da-versionHash"}, `(${(buildInfo.commit || "Unknown").slice(0, 7)})`)),
             BDV2.react.createElement("div", {className: `${classNameColorMuted} ${sizes.size12}`}, `BBD ${bbdVersion} `, BDV2.react.createElement("span", {className: classNameVersionHash+" da-versionHash"}, versionHash))
         ]
         

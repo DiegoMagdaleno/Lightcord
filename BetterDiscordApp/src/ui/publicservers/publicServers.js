@@ -1,14 +1,12 @@
 import BDV2 from "../../modules/v2";
 
-import Tools from "../tools";
 import SettingsTitle from "../settingsTitle";
 import TabBarSeparator from "../tabBarSeparator";
-import TabBarHeader from "../tabBarHeader";
-import TabBarItem from "../tabBarItem";
 
 import ServerCard from "./serverCard";
-import SidebarView from "./sidebarView";
+import { useForceUpdate } from "../../modules/hooks";
 
+let SettingsView
 export default class V2C_PublicServers extends BDV2.reactComponent {
 
     constructor(props) {
@@ -26,11 +24,13 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
         this.AvatarDefaults = BDV2.WebpackModules.findByUniqueProperties(["getUserAvatarURL", "DEFAULT_AVATARS"]);
         this.InviteActions = BDV2.WebpackModules.findByUniqueProperties(["acceptInvite"]);
         this.SortedGuildStore = BDV2.WebpackModules.findByUniqueProperties(["getSortedGuilds"]);
+
+        this.hooks = []
     }
 
     componentDidMount() {
         this.checkConnection();
-     }
+    }
 
     setInitialState() {
         this.state = {
@@ -42,7 +42,9 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
             connection: {
                 state: 0,
                 user: null
-            }
+            },
+            section: this.categorySlugs[0],
+            theme: "dark"
         };
     }
 
@@ -52,7 +54,7 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
 
     search(query, clear) {
         const self = this;
-        fetch(`${self.endPoint}${query}${query ? "&schema=new" : "?schema=new"}`, {
+        fetch(`${self.searchEndPoint}${query}${query ? "&schema=new" : "?schema=new"}`, {
             method: "get"
         }).then(async res => {
             if(res.status !== 200)throw await res.text()
@@ -90,11 +92,6 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
                 servers: servers,
                 next: data.next
             });
-
-            if (clear) {
-                //console.log(self);
-                self.refs.sbv.refs.contentScroller.scrollTop = 0;
-            }
         }).catch((err) => {
             console.error(err)
             return self.setState({
@@ -126,14 +123,15 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
         options.x = Math.round(window.screenX + window.innerWidth / 2 - options.width / 2);
         options.y = Math.round(window.screenY + window.innerHeight / 2 - options.height / 2);
 
-        self.joinWindow = new (window.require("electron").remote.BrowserWindow)(options);
+        const win = self.joinWindow = new (require("electron").remote.BrowserWindow)(options);
         const url = "https://auth.discordservers.com/connect?scopes=guilds.join&previousUrl=https://auth.discordservers.com/info";
-        self.joinWindow.webContents.on("did-navigate", (event, url) => {
+        win.webContents.on("did-navigate", (event, url) => {
             if (url != "https://auth.discordservers.com/info") return;
-            self.joinWindow.close();
+            win.close();
             self.checkConnection();
         });
-        self.joinWindow.loadURL(url);
+        win.loadURL(url);
+        win.setMenuBarVisibility(false)
     }
 
     get windowOptions() {
@@ -146,7 +144,7 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
             maximizable: false,
             minimizable: false,
             alwaysOnTop: true,
-            frame: false,
+            frame: true,
             center: false,
             webPreferences: {
                 nodeIntegration: false
@@ -187,7 +185,7 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
         ]
     }
 
-    get endPoint() {
+    get searchEndPoint() {
         return "https://search.discordservers.com";
     }
 
@@ -249,59 +247,73 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
     }
 
     render() {
+        this.hooks.forEach((e) => e())
+        SettingsView = SettingsView || BDV2.WebpackModules.findByDisplayName("SettingsView")
         return BDV2.react.createElement("div", {id: "pubslayerroot"}, 
-            BDV2.react.createElement("div", {id: "pubslayer"}, BDV2.react.createElement(SidebarView, {ref: "sbv"}, this.component))
+            BDV2.react.createElement("div", {id: "pubslayer"}, BDV2.react.createElement(SettingsView, {
+                onSetSection: (section) => {
+                    this.changeCategory(this.categorySlugs.indexOf(section))
+                },
+                sections: this.sections,
+                onClose: this.close,
+                section: this.state.section
+            }))
         );
     }
 
-    get component() {
-        return {
-            sidebar: {
-                component: this.sidebar
-            },
-            content: {
-                component: this.content
-            },
-            tools: {
-                component: BDV2.react.createElement(Tools, {key: "pt", ref: "tools", onClick: this.close})
+    get sections(){
+        let sections = []
+        sections.push({
+            section: "HEADER",
+            label: "Public Servers"
+        }, {
+            section: "DIVIDER"
+        }, {
+            section: "CUSTOM",
+            element: this.searchInput.bind(null, () => this, this.searchKeyDown)
+        }, {
+            section: "DIVIDER"
+        }, {
+            section: "HEADER",
+            label: "Categories"
+        }, ...this.categoryButtons.map((value, index) => {
+            return {
+                section: this.categorySlugs[index],
+                label: value,
+                element: this.content.bind(null, () => this)
             }
-        };
+        }), {
+            section: "DIVIDER"
+        }, {
+            section: "CUSTOM",
+            element: this.footer
+        }, {
+            section: "CUSTOM",
+            element: this.connection.bind(null, () => this)
+        })
+        return sections
     }
-
-    get sidebar() {
-        return BDV2.react.createElement(
-            "div",
-            {className: "sidebar", key: "ps"},
-            BDV2.react.createElement(
-                "div",
-                {className: "ui-tab-bar SIDE"},
-                BDV2.react.createElement(
-                    "div",
-                    {className: "ui-tab-bar-header", style: {fontSize: "16px"}},
-                    "Public Servers"
-                ),
-                BDV2.react.createElement(TabBarSeparator, null),
-                this.searchInput,
-                BDV2.react.createElement(TabBarSeparator, null),
-                BDV2.react.createElement(TabBarHeader, {text: "Categories"}),
-                this.categoryButtons.map((value, index) => {
-                    return BDV2.react.createElement(TabBarItem, {id: index, onClick: this.changeCategory, key: index, text: value, selected: this.state.selectedCategory === index});
-                }),
-                BDV2.react.createElement(TabBarSeparator, null),
-                this.footer,
-                this.connection
-            )
-        );
-    }
-
-    get searchInput() {
+    
+    searchInput(getThis, searchKeyDown) {
+        const [value, setValue] = BDV2.react.useState("")
         return BDV2.react.createElement(
             "div",
             {className: "ui-form-item"},
             BDV2.react.createElement(
                 "div",
                 {className: "ui-text-input flex-vertical", style: {width: "172px", marginLeft: "10px"}},
-                BDV2.react.createElement("input", {ref: "searchinput", onKeyDown: this.searchKeyDown, onChange: () => {}, type: "text", className: "input default", placeholder: "Search...", maxLength: "50"})
+                BDV2.react.createElement("input", {
+                    ref: (serchinput) => (getThis().refs.searchinput = serchinput), 
+                    onKeyDown: searchKeyDown, 
+                    onChange: (e) => {
+                        setValue(e.target.value)
+                    }, 
+                    type: "text", 
+                    className: "input default", 
+                    placeholder: "Search...", 
+                    maxLength: "50",
+                    value: value
+                })
             )
         );
     }
@@ -321,6 +333,10 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
         self.search(query, true);
     }
 
+    get categorySlugs(){
+        return this.categoryButtons.map(e => e.toLowerCase().replace(/[^\w\d]+/g, "_"))
+    }
+
     get categoryButtons() {
         return ["All", "FPS Games", "MMO Games", "Strategy Games", "MOBA Games", "RPG Games", "Tabletop Games", "Sandbox Games", "Simulation Games", "Music", "Community", "Language", "Programming", "Other"];
     }
@@ -328,12 +344,12 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
     changeCategory(id) {
         const self = this;
         if (self.state.loading) return;
-        self.refs.searchinput.value = "";
         self.setState({
             loading: true,
             selectedCategory: id,
             title: "Loading...",
-            term: null
+            term: null,
+            section: self.categorySlugs[id]
         });
         if (id === 0) {
             self.search("", true);
@@ -342,15 +358,18 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
         self.search(`?category=${self.categoryButtons[id]}`, true);
     }
 
-    get content() {
-        const self = this;
-        const guildList = this.SortedGuildStore.getFlattenedGuildIds();
-        const defaultList = this.AvatarDefaults.DEFAULT_AVATARS;
-        if (self.state.connection.state === 1) return self.notConnected;
+    content(getThis) {
+        const self = getThis();
+        self.useState()
+        const guildList = self.SortedGuildStore.getFlattenedGuildIds();
+        const defaultList = self.AvatarDefaults.DEFAULT_AVATARS;
+        if (self.state.connection.state === 1) return BDV2.react.createElement(self.notConnected.bind(null, getThis));
         let columnModule = BDModules.get(e => e.contentColumnDefault)[0]
         return [BDV2.react.createElement(
             "div",
-            {ref: "content", key: "pc", className: columnModule.contentColumn+" "+columnModule.contentColumn+" content-column default"},
+            {ref: (ref) => {
+                (self.refs.content = ref)
+            }, key: "pc", className: columnModule.contentColumn+" "+columnModule.contentColumn+" content-column default"},
             BDV2.react.createElement(SettingsTitle, {text: self.state.title}),
             self.bdServer,
             self.state.servers.map((server) => {
@@ -371,13 +390,13 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
         )];
     }
 
-    get notConnected() {
-        const self = this;
+    notConnected(getThis) {
+        const self = getThis();
         //return BDV2.react.createElement(SettingsTitle, { text: self.state.title });
         let columnModule = BDModules.get(e => e.contentColumnDefault)[0]
         return [BDV2.react.createElement(
             "div",
-            {key: "ncc", ref: "content", className: columnModule.contentColumn+" "+columnModule.contentColumn+" content-column default"},
+            {key: "ncc", ref: (ref) => (self.refs.content = ref), className: columnModule.contentColumn+" "+columnModule.contentColumn+" content-column default"},
             BDV2.react.createElement(
                 "h2",
                 {className: "ui-form-title h2 margin-reset margin-bottom-20"},
@@ -405,7 +424,7 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
         )];
     }
 
-    get footer() {
+    footer() {
         return BDV2.react.createElement(
             "div",
             {className: "ui-tab-bar-header"},
@@ -417,8 +436,24 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
         );
     }
 
-    get connection() {
-        const self = this;
+    useState(){
+        const forceUpdate = useForceUpdate()
+        BDV2.React.useEffect(() => {
+            const listener = () => {
+                forceUpdate()
+            }
+            this.hooks.push(listener)
+            return () => {
+                const index = this.hooks.findIndex(e => e===listener)
+                if(index < 0)return
+                this.hooks.splice(index, 1)
+            }
+        }, [])
+    }
+
+    connection(getThis) {
+        const self = getThis();
+        self.useState()
         const {connection} = self.state;
         if (connection.state !== 2) return BDV2.react.createElement("span", null);
 
@@ -446,5 +481,5 @@ export default class V2C_PublicServers extends BDV2.reactComponent {
                 )
             )
         );
-}
+    }
 }

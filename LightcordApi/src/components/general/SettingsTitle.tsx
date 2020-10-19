@@ -3,7 +3,7 @@ import Title from "./Title"
 import { ReactNode } from "react"
 
 type SettingsTitleProps = {
-    children: ReactNode
+    children?: ReactNode
     className?: string
 }
 

@@ -1,3 +1,6 @@
+/**
+ * Discord's dispatcher described. Too lazy to comment everything.
+ */
 export default interface DispatcherTypes {
     _subscriptions: any,
     _waitQueue: (() => void)[],

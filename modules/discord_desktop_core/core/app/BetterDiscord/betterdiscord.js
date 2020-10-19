@@ -1,10 +1,10 @@
 const electron = require("electron")
 const { useShim } = require("./patchNotifications");
-const appSettings = electron.remote.getGlobal("appSettings")
+const appSettings = window.Lightcord.Api.settings
 
 module.exports = {
     NotificationsUseShim: (value) => {
-        if(![true, false].includes(value))return
+        if(typeof value !== "boolean")return
         appSettings.set("DEFAULT_NOTIFICATIONS", !value)
         appSettings.save()
         useShim(value)

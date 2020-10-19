@@ -169,12 +169,10 @@ PluginModule.prototype.reload = function(name) {
 };
 
 PluginModule.prototype.edit = function(filenameOrName) {
-    console.log("Edit " + filenameOrName);
     const bdplugin = Object.values(bdplugins).find(p => p.filename == filenameOrName) || bdplugins[filenameOrName];
     if (!bdplugin) return;
     const fullPath = require("path").resolve(ContentManager.pluginsFolder, bdplugin.filename);
-    console.log("Edit " + fullPath);
-    require("electron").shell.openItem(`${fullPath}`);
+    require("electron").shell.openExternal(`${fullPath}`);
 };
 
 PluginModule.prototype.updatePluginList = function() {

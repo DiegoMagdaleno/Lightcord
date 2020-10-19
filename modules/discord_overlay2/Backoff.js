@@ -11,9 +11,7 @@ function _defineProperties(target, props) { for (var i = 0; i < props.length; i+
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
-var Backoff =
-/*#__PURE__*/
-function () {
+var Backoff = /*#__PURE__*/function () {
   /**
    * Create a backoff instance can automatically backoff retries.
    */
@@ -25,6 +23,11 @@ function () {
     _classCallCheck(this, Backoff);
 
     this._fails = 0;
+
+    if (min <= 0) {
+      throw Error("Backoff min value must be greater than zero or backoff will never back-off.");
+    }
+
     this.min = min;
     this.max = max != null ? max : min * 10;
     this.jitter = jitter;

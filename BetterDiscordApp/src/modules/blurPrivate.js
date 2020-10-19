@@ -20,7 +20,6 @@ function getSelectors(){
         selects.push(`#app-mount .${defaultClassName} .${removeDa(userSettingsAccount.userSettingsAccount)} div:nth-child(2)>div:nth-child(2)>.${removeDa(BDModules.get(e => e.viewBody)[0].viewBody)}`)
         selects.push(`.${removeDa(userSettingsAccount.userSettingsSecurity)} .${removeDa(children.children)} > div:nth-child(2)`)
     }
-    console.log(selects)
     return selects
 }
 

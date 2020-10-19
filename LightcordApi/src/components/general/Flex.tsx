@@ -10,7 +10,6 @@ type FlexProps = {
     shrink?: number,
     grow?: number,
     basis?: "auto"|string,
-    children: ReactNode,
     style?: CSSProperties
 }
 
@@ -91,7 +90,7 @@ export default class Flex extends React.Component<FlexProps> {
 let AllPreviews
 
 export type FlexChildProps = {
-    children: ReactNode,
+    children?: ReactNode,
     className?: string,
     grow?: number,
     style?: CSSProperties,

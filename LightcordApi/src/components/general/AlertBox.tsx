@@ -3,7 +3,7 @@ import { ReactNode } from "react"
 
 type AlertBoxProps = {
     type: "warn"|"info"|"danger"|"error"|"success",
-    children: ReactNode|string
+    children?: ReactNode|string
 }
 
 let AlertBoxModules

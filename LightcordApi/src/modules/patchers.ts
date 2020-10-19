@@ -2,6 +2,7 @@ import Utils from "./Utils"
 import Notices, { notices } from "../components/private/Notices"
 import { isNative } from "./environnement";
 import WebpackLoader from "./WebpackLoader";
+import { dangerousBDModules } from "./BDModules";
 
 export function patch(){
     /** START NOTICE */
@@ -66,13 +67,14 @@ export function patch(){
             UserPopoutComponent.prototype.render = function(){
                 const returnValue = render.call(this, ...arguments)
                 try{
+                    console.log(returnValue)
                     returnValue.props.children.props["data-user-id"] = this.props.user.id
                 }catch(e){
                     console.error(e)
                 }
                 return returnValue
             }
-        })
+        }).catch(console.error)
         /** END USERPOPOUT PATCH*/
     
         /** START USERPROFILE PATCH */
@@ -94,13 +96,14 @@ export function patch(){
                 const returnValue = render.call(this, ...arguments)
                 console.log(returnValue)
                 try{
+                    console.log(returnValue)
                     returnValue.props.children.props["data-user-id"] = this.props.user.id
                 }catch(e){
                     console.error(e)
                 }
                 return returnValue
             }
-        })
+        }).catch(console.error)
         /** END USERPROFILE PATCH */
 
         /** START WEBHOOK PATCH */
@@ -212,7 +215,10 @@ function getModule(filter: (mod:any) => boolean):Promise<any>{
 
 let hasCompletedLogin = false
 let loginPromise:Promise<void>
+let AuthenticationStore = dangerousBDModules.get(e => e.default && e.default.isAuthenticated)
+AuthenticationStore = AuthenticationStore[0] && AuthenticationStore[0].default
 function awaitLogin():Promise<void>{
+    if(AuthenticationStore && AuthenticationStore.isAuthenticated())return Promise.resolve()
     if(hasCompletedLogin)return Promise.resolve()
     if(loginPromise)return loginPromise
      

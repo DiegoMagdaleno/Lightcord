@@ -104,7 +104,7 @@ function launchSplashWindow(startMinimized = false) {
       nodeIntegration: true,
       enableRemoteModule: true
     },
-    icon: path.join(__dirname, "..", "discord.png")
+    icon: path.join(__dirname, "..", "modules", "discord_desktop_core", "core", "app", "images", "discord.png")
   };
 
   splashWindow = new electron.BrowserWindow(windowConfig);

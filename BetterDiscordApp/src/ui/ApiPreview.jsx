@@ -33,7 +33,7 @@ export default class ApiPreview extends React.PureComponent {
                 </formModule.FormText>
                 <MarginTop></MarginTop>
                 <Lightcord.Api.Components.inputs.Button color="brand" look="outlined" size="medium" hoverColor="green" onClick={() => {
-                    remote.shell.openExternal("https://lightcord.deroku.xyz/LightcordApi/docs")
+                    remote.shell.openExternal("https://lightcord.org/LightcordApi/")
                 }} wrapper={false}>
                     Documentation
                 </Lightcord.Api.Components.inputs.Button>

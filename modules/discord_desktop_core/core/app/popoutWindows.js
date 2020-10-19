@@ -32,7 +32,7 @@ const DEFAULT_POPOUT_OPTIONS = {
     nodeIntegration: false,
     nativeWindowOpen: true
   },
-  icon: join(__dirname, 'discord.png')
+  icon: join(__dirname, "images", 'discord.png')
 };
 const features = (0, _appFeatures.getFeatures)();
 

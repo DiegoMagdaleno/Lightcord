@@ -1,29 +1,18 @@
 import WebpackLoader from "../../modules/WebpackLoader"
-import uuid from "../../modules/uuid"
 import NOOP from "../../modules/noop"
-import Utils from "../../modules/Utils"
 
 type SwitchProps = {
     id?: string,
-    onChange?: (checked: boolean) => void,
-    value?: boolean,
-    fill?: string,
-    theme?: "default"|"clear",
+    value: boolean,
     disabled?: boolean,
-    className?: string,
-    size?: "default"|"mini",
-    style?: React.CSSProperties
+    classname?: string,
+    onChange(checked:boolean):void
 }
 
 let SwitchModules
 export default class Switch extends React.Component<SwitchProps, {value: boolean}> {
     constructor(props:SwitchProps){
         super(props)
-
-        this.state = {
-            value: props.value || false
-        }
-        this.onChange = this.onChange.bind(this)
     }
 
     get modules(){
@@ -38,32 +27,15 @@ export default class Switch extends React.Component<SwitchProps, {value: boolean
         ] = this.modules
 
         let props = this.props
-        return (<SwitchComponent id={props.id} onChange={this.onChange} value={this.state.value || false} fill={props.fill} 
-            theme={SwitchComponent.Themes[props.theme.toUpperCase()]} disabled={props.disabled} className={props.className} 
-            size={SwitchComponent.Sizes[props.size.toUpperCase()]} style={props.style}/>)
-    }
-
-    onChange(value){
-        this.props.onChange(!this.state.value)
-        this.setState({
-            value: !this.state.value
-        })
-    }
-
-    get value(){
-        return this.state.value
+        return (<SwitchComponent id={props.id} checked={props.value} disabled={props.disabled} 
+            className={props.disabled} onChange={props.onChange}/>)
     }
 
     static defaultProps = {
         id: null,
         onChange: NOOP,
-        value: false,
-        fill: null,
-        theme: "default",
         disabled: false,
-        className: null,
-        size: "default",
-        style: {}
+        className: ""
     }
 
     static get AllPreviews(){
@@ -73,30 +45,12 @@ export default class Switch extends React.Component<SwitchProps, {value: boolean
             AllPreviews.push([{
                 value: false
             }], [{
-                theme: "default"
-            }, {
-                theme: "clear"
-            }], [{
                 disabled: false
             }, {
                 disabled: true
-            }], [{
-                id: "api-preview-switch"
-            }], [{
-                fill: null
-            }], [{
-                size: "default"
-            }, {
-                size: "mini"
-            }], [{
-                style: {}
             }])
             return AllPreviews
         })()
-    }
-
-    static help = {
-        error: "The `clear` option doesn't work well on light theme."
     }
 }
 let AllPreviews

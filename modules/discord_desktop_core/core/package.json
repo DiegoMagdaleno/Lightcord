@@ -6,11 +6,13 @@
   "dependencies": {
     "chrome-tabs": "^5.4.0",
     "invariant": "2.2.4",
+    "localstorage-polyfill": "git+https://github.com/JeanOUINA/localstorage-polyfill.git",
     "lodash": "4.17.19",
     "mkdirp": "^1.0.4",
     "promise.allsettled": "^1.0.0",
     "request": "2.88.0",
     "rimraf": "^2.6.3",
+    "safe-buffer": "^5.2.1",
     "yauzl": "^2.10.0"
   }
 }

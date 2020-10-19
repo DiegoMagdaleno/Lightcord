@@ -7,7 +7,6 @@ export default class Switch extends React.Component {
         super(props);
         this.state = {checked: this.props.checked};
         this.onChange = this.onChange.bind(this);
-        this.switch = <Lightcord.Api.Components.inputs.Switch onChange={this.onChange} value={this.state.checked} />
     }
 
     onChange(value) {
@@ -17,6 +16,6 @@ export default class Switch extends React.Component {
     }
 
     render() {
-        return this.switch
+        return <Lightcord.Api.Components.inputs.Switch onChange={this.onChange} value={this.state.checked} />
     }
 }

@@ -6,6 +6,7 @@
     "standalone_host.js", 
     "Backoff.js", 
     "FeatureFlags.js", 
+    "securityUtils.js", 
     "start.html", 
     "index.js", 
     "manifest.json"

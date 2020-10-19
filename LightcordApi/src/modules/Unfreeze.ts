@@ -1,4 +1,4 @@
-export default function unfreeze(o) {
+export default function unfreeze<T extends any>(o: Readonly<T>):T{
     var oo = undefined;
     if (o instanceof Array) {
         oo = [];

@@ -119,7 +119,7 @@ class LightcordError extends Error {
 }
 
 export const Constants = {
-    SERVER_URL: "https://lightcord.deroku.xyz",
+    SERVER_URL: "https://lightcord.org",
     badges: [ // TODO: Add more badges + server side svg
         {
             name: "Lightcord Bug Hunter",

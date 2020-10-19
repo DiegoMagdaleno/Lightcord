@@ -3,10 +3,7 @@ import appSettings from "./appSettings";
 let settings = appSettings.getSettings();
 
 /** Glasstron */
-if (settings.get("GLASSTRON", true)) {
-	const glasstron = require("glasstron");
-	glasstron.init();
-}
+if (settings.get("GLASSTRON", true))require("glasstron");
 
 /** Modules */
 import * as electron from "electron";
@@ -37,6 +34,7 @@ electron.app.commandLine.appendSwitch(
 	"no-user-gesture-required"
 );
 electron.app.commandLine.appendSwitch("no-force-async-hooks-checks");
+electron.app.commandLine.appendSwitch("enable-transparent-visuals");
 
 function setupHardwareAcceleration() {
 	const settings = appSettings.getSettings();
@@ -96,11 +94,8 @@ function hasArgvFlag(flag) {
 releaseChannel: ${buildInfo.releaseChannel}
 commit: ${buildInfo.commit}`);
 
-	if (!electron.app.commandLine.hasSwitch("enable-transparent-visuals"))electron.app.commandLine.appendSwitch("enable-transparent-visuals");
   	electron.app.setAppUserModelId(Constants.APP_ID);
   
-  
-
 	let coreModule;
 
 	const isFirstInstance = electron.app.requestSingleInstanceLock();

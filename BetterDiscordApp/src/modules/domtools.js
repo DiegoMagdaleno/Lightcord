@@ -132,8 +132,7 @@ export default class DOMTools {
      * @param {Element} [baseElement] - Element to base the query from
      * @returns {(Element|null)} - The found element or null if not found
      */
-    static query(selector, baseElement) {
-        if (!baseElement) baseElement = document;
+    static query(selector, baseElement = document) {
         return baseElement.querySelector(selector);
     }
 
@@ -144,8 +143,7 @@ export default class DOMTools {
      * @param {Element} [baseElement] - Element to base the query from
      * @returns {Array<Element>} - Array of all found elements
      */
-    static queryAll(selector, baseElement) {
-        if (!baseElement) baseElement = document;
+    static queryAll(selector, baseElement = document) {
         return baseElement.querySelectorAll(selector);
     }
 

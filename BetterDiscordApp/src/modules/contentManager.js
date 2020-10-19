@@ -4,11 +4,12 @@ import themeModule from "./themeModule";
 import Utils from "./utils";
 import dataStore from "./dataStore";
 import { encryptSettingsCache, decryptSettingsCache, processFile } from "./pluginCertifier";
+import * as electron from "electron"
 
 const path = require("path");
 const fs = require("fs");
 const Module = require("module").Module;
-Module.globalPaths.push(path.resolve(require("electron").remote.app.getAppPath(), "node_modules"));
+Module.globalPaths.push(path.resolve(electron.ipcRenderer.sendSync("LIGHTCORD_GET_APP_PATH"), "node_modules"));
 class MetaError extends Error {
     constructor(message) {
         super(message);
@@ -260,9 +261,9 @@ export default new class ContentManager {
             }
         }
 
-        try {window.require(path.resolve(baseFolder, filename));}
+        try {__non_webpack_require__(path.resolve(baseFolder, filename));}
         catch (error) {return {name: filename, file: filename, message: "Could not be compiled.", error: {message: error.message, stack: error.stack}};}
-        const content = window.require(path.resolve(baseFolder, filename));
+        const content = __non_webpack_require__(path.resolve(baseFolder, filename));
         if(!content.name)return {name: filename, file: filename, message: "Cannot escape the ID.", error: new Error("Cannot read property 'replace' of undefined")}
         content.id = Utils.escapeID(content.name);
         //if(!id)return {name: filename, file: filename, message: "Invalid ID", error: new Error("Please fix the name of "+filename+". BetterDiscord can't escape an ID.")}
@@ -286,7 +287,7 @@ export default new class ContentManager {
         const isPlugin = type === "plugin";
         const baseFolder = isPlugin ? this.pluginsFolder : this.themesFolder;
         try {
-            delete window.require.cache[window.require.resolve(path.resolve(baseFolder, filename))];
+            delete __non_webpack_require__.cache[__non_webpack_require__.resolve(path.resolve(baseFolder, filename))];
         }
         catch (err) {return {name: filename, file: filename, message: "Could not be unloaded.", error: {message: err.message, stack: err.stack}};}
     }
@@ -294,7 +295,7 @@ export default new class ContentManager {
     isLoaded(filename, type) {
         const isPlugin = type === "plugin";
         const baseFolder = isPlugin ? this.pluginsFolder : this.themesFolder;
-        try {window.require.cache[window.require.resolve(path.resolve(baseFolder, filename))];}
+        try {__non_webpack_require__.cache[__non_webpack_require__.resolve(path.resolve(baseFolder, filename))];}
         catch (err) {return false;}
         return true;
     }

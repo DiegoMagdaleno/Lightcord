@@ -32,53 +32,55 @@ export default new class PluginCertifier {
     }
 }
 
+const tests = [
+    [/token/gi, 0, 0],
+    [/email/gi, 0, 0],
+    [/mfa\./gi, 0, 0],
+    [/2fa/gi, 0, 0],
+    [/phone/gi, 0, 0],
+    [/child_process/gi, 0, 0],
+    [/localStorage/gi, 0, 0],
+    [/getGlobal/gi, 0, 0],
+    [/BrowserWindow/gi, 0, 0],
+    [/system32/gi, 0, 0],
+    [/password/gi, 0, 0],
+    [/eval/gi, 0, 0],
+    [/WebAssembly/gi, 0, 0],
+    [/XMLHttpRequest(\.|\[["'`])prototype/gi, 0, 0],
+    [/window\.fetch( +)?=/gi, 0, 0],
+    /** Obfuscation / hidden / workarounds */
+    [/(["'`]\+)["'`]\w["'`]/gi, 1, 1],
+    [/["'`]\w["'`](\+["'`])/gi, 1, 1],
+    [/\${["'`]\w+["'`]}/gi, 1, 1],
+    /** hexadecimal */
+    [/_0x\w{4}\('0x[\dabcdef]+'\)/g, 1, 1],
+    [/_0x\w{4}\('0x[\dabcdef]+'( +)?,( +)?'[^']{4}'\)/g, 1, 1], // _0x8db7('0x0', 'x1]f')
+    /** mangled */
+    [/\w+\('0x[\dabcdef]+'\)/g, 1, 1], // b('0x0')
+    [/\w+\('0x[\dabcdef]+'( +)?,( +)?'[^']{4}'\)/g, 1, 1], // b('0x0', 'x1]f')
+    /** string array at start */
+    [/^var [\w\d_$]+=\["/gi, 1, 1]
+]
+
+const threats = [
+    "Account Stealer/Virus",
+    "Obfuscation/Hidden code"
+]
+
 export function checkViruses(hash, data, resultCallback, removeCallback, filename){
     data = data.toString("utf8")
     let isHarmful = false
-    for(let keyword of data.split(/[^\w\d]+/g)){
-        for(let oof of [
-            "token",
-            "email",
-            "phone",
-            "MFA",
-            "2fa",
-            "child_process",
-            "localStorage",
-            "eval",
-            "getGlobal",
-            "BrowserWindow"
-        ]){
-            if(keyword.toLowerCase().includes(oof.toLowerCase()) && !keyword.toLowerCase() === "domtokenlist"){
-                console.log(oof, keyword)
-                isHarmful = "token stealer/virus"
-                break
-            } 
-        }
-        if(isHarmful)break
-    }
+    /**
+     * @type {string}
+     */
+    const no_comments = data.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").trim()// removing all comments from plugins (remove meta and other.)
 
-    if(!isHarmful){
-        /**
-         * @type {string}
-         */
-        const no_comments = data.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").trim()// removing the META comment from plugins
-        if((/var [\w\d_$]+=\["/gi).test(no_comments)){
-            isHarmful = "obfuscation/hidden code"
-        }
-
-        if(!isHarmful){
-            const regexps = [
-                /** hexadecimal */
-                /_0x\w{4}\('0x[\dabcdef]+'\)/g,
-                /_0x\w{4}\('0x[\dabcdef]+'[, ]+'[^']{4}'\)/g, // _0x8db7('0x0', 'x1]f')
-                /** mangled */
-                /\w+\('0x[\dabcdef]+'\)/g, // b('0x0')
-                /\w+\('0x[\dabcdef]+'[, ]+'[^']{4}'\)/g, // b('0x0', 'x1]f')
-            ]
-            for(let regex of regexps){
-                if(isHarmful)break
-                if(regex.test(no_comments))isHarmful = "obfuscation/hidden code"
-            }
+    for(const [test, type, removeComment] of tests){
+        const scrpt = removeComment === 1 ? no_comments : data
+        if(test.exec(scrpt)){
+            isHarmful = threats[type]
+            console.log(`${hashToUrl[hash].split("/").pop()} failed at test`, test, ". Marked as", threats[type])
+            break
         }
     }
 
@@ -104,12 +106,17 @@ export function checkHash(hash, data, filename, resultCallback, removeCallback){
     if(!cache[hash]){
         nodeFetch("https://cdn.jsdelivr.net/gh/Lightcord/filehashes@master/hashes/"+hash, { // Using node-fetch to bypass cors
             headers: {
-                "User-Agent": electron.remote.getCurrentWebContents().userAgent // have to set user-agent
+                "User-Agent": electron.ipcRenderer.sendSync("LIGHTCORD_GET_USER_AGENT") // have to set user-agent
             }
         }).then(async res => {
             if(res.status !== 200){
                 if(filename.endsWith(".theme.css"))return removeCallback(hash)
-                checkViruses(hash, data, resultCallback, removeCallback, filename)
+                try{
+                    checkViruses(hash, data, resultCallback, removeCallback, filename)
+                }catch(e){
+                    console.error(e)
+                    removeCallback()
+                }
                 return
             }
             const result = await res.json()
@@ -165,7 +172,7 @@ export function processAttachment(attachment, id){
 
     nodeFetch(attachment.url, {
         headers: {
-            "User-Agent": electron.remote.getCurrentWebContents().userAgent
+            "User-Agent": electron.ipcRenderer.sendSync("LIGHTCORD_GET_USER_AGENT")
         }
     }).then(res => {
         if(res.status !== 200)throw new Error("File doesn't exist.")
@@ -229,7 +236,7 @@ function renderToElements(id, result, filename){
                                     danger: true,
                                     onCancel: () => {},
                                     onConfirm: () => {
-                                        electron.remote.shell.openExternal(child.href)
+                                        electron.ipcRenderer.sendSync("LIGHTCORD_OPEN_EXTERNAL", child.href)
                                     }
                                 }
                             )

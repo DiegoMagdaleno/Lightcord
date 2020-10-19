@@ -42,7 +42,7 @@ currentWindow.webContents.on("dom-ready", () => {
                     webview.remove()
                     resetAppMount()
                     document.querySelector("body > div.container-after-titlebar > div").innerHTML = '<h2 class="center">Loading...</h2>'
-                    fetch("https://lightcord.deroku.xyz/auth/callback?"+query)
+                    fetch("https://lightcord.org/auth/callback?"+query)
                     .then(async res => {
                         if(res.status !== 200){ // error
                             currentWindow.close()

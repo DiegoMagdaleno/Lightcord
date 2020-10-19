@@ -9,7 +9,14 @@ import NOOP from "./noop";
 import WebpackLoader, { WebpackLoaderError } from "./WebpackLoader";
 
 let soundModule
+/**
+ * Tools for interacting with 
+ */
 export default new class DiscordTools {
+    /**
+     * Shows a notice on the top of Discord.
+     * @param data Data of the notice.
+     */
     showNotice(data:NoticeData):Notice{
         if(typeof data !== "object" || typeof data.text !== "string")throw new Error(`This notice is not valid. Given: ${Utils.formatJSObject(data)}`)
         let newData = cloneNullProto(Object.assign({}, defaultNotice, data)) as notice
@@ -20,6 +27,9 @@ export default new class DiscordTools {
         return notice
     }
 
+    /**
+     * Get all the notices in queue.
+     */
     get notices():Notice[]{
         return notices.map(data => new Notice(data))
     }
@@ -43,13 +53,21 @@ export default new class DiscordTools {
         return notification
     }
 
+    /**
+     * Create a sound for later use.
+     * @param sound The sound as defined in the Sound type.
+     */
     createSound(sound:Sound){
         soundModule = soundModule || WebpackLoader.findByUniqueProperties(["createSound"])
-        if(!soundModule)throw new WebpackLoaderError("Couldn't find soundModule here.")
+        if(!soundModule)throw new WebpackLoaderError("Couldn't find soundModule.")
         const created = soundModule.createSound(sound)
         return created
     }
 
+    /**
+     * Same as createSource, except it automatically plays.
+     * @param sound The sound as defined in the Sound type.
+     */
     playSound(sound:Sound){
         const created = this.createSound(sound)
         created.play()
@@ -57,14 +75,26 @@ export default new class DiscordTools {
     }
 }
 
+/**
+ * List of valid sounds.
+ */
 export type Sound = "call_calling"|"call_ringing"|"call_ringing_beat"|"ddr-down"|"ddr-left"|"ddr-right"|"ddr-up"|"deafen"|"discodo"|"disconnect"|"human_man"|"mention1"|"mention2"|"mention3"|"message1"|"message2"|"message3"|"mute"|"overlayunlock"|"ptt_start"|"ptt_stop"|"reconnect"|"robot_man"|"stream_ended"|"stream_started"|"stream_user_joined"|"stream_user_left"|"undeafen"|"unmute"|"user_join"|"user_leave"|"user_moved"
 
+/**
+ * Notifications informations.
+ */
 export type NotificationData = {
+    /** The title of the notification */
     title: string,
+    /** The body of the notification. Could be truncated. */
     body: string,
+    /** An http(s) link to an icon. */
     icon: string,
+    /** When the notification is showing */
     onShow?: () => void,
+    /** When the user clicked the notification */
     onClick?: () => void,
+    /** When the notification has been closed. */
     onClose?: () => void
 }
 
@@ -86,6 +116,9 @@ const EventHandler = function(){
     if(this.index !== this.state.index){
         this.emit("index", this.index)
     }
+    this.state.removed = this.removed
+    this.state.index = this.index
+    this.state.showing = this.showing
 }
 
 /** A notice interface for modifying it and subscribing to events. */
@@ -146,7 +179,8 @@ export class Notice extends EventEmitter {
         return super.off(event, listener)
     }
 
-    state:{
+    /** Please do not modify this. It is used internally to emit events only if the data has changed. */
+    private state:{
         removed:boolean,
         showing:boolean,
         index:number
@@ -154,16 +188,19 @@ export class Notice extends EventEmitter {
 
     private nextTickRefresh:boolean = false
 
+    /** if the notice is not, and will not show anymore. */
     get removed():boolean{
         return !notices.find(e => e.id === this.id)
     }
+    /** If the notice is showing right now. */
     get showing():boolean{
         return this.index === 0
     }
-
+    /** The position in the queue, 0 is showing. */
     get index():number{
         return notices.findIndex(e => e.id === this.id)
     }
+    /** The id of the notice. */
     get id(){
         return this.data.id
     }

@@ -1,6 +1,6 @@
 "use strict";
 
-var Overlay = require('./discord_overlay2.node'); // [adill] when the module was converted to use N-API we lost the ability to
+var Overlay = require('./discord_overlay2_'+process.platform+'.node'); // [adill] when the module was converted to use N-API we lost the ability to
 // parse json into javascript objects trivially so our event handler simply
 // returns event json
 

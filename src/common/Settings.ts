@@ -12,7 +12,6 @@ export default class Settings {
   lastModified: number;
   constructor(root:string) {
     this.path = path.join(root, 'settings.json');
-    console.log(this.path)
     try {
       this.lastSaved = fs.readFileSync(this.path, "utf8");
       this.settings = JSON.parse(this.lastSaved);

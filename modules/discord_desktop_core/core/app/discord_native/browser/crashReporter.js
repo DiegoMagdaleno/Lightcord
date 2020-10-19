@@ -42,13 +42,13 @@ function getCrashReporterArgs(metadata) {
     productName: 'Discord',
     companyName: 'Discord Inc.',
     submitURL: 'https://sentry.io/api/146342/minidump/?sentry_key=384ce4413de74fe0be270abe03b2b35a',
-    uploadToServer: true,
+    uploadToServer: false,
     ignoreSystemCrashHandler: false,
     extra: flat_metadata
   };
 }
 
-electron.crashReporter.start(getCrashReporterArgs(metadata));
+//electron.crashReporter.start(getCrashReporterArgs(metadata));
 
 electron.ipcMain.handle(CRASH_REPORTER_UPDATE_METADATA, (() => {
   var _ref = _asyncToGenerator(function* (_, additional_metadata) {
@@ -63,7 +63,7 @@ electron.ipcMain.handle(CRASH_REPORTER_UPDATE_METADATA, (() => {
     // could do similarly.
     if (getElectronMajorVersion() < 9) {
       const args = getCrashReporterArgs(final_metadata);
-      electron.crashReporter.start(args);
+      //electron.crashReporter.start(args);
       result.args = args;
     }
 

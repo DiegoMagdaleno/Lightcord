@@ -1,5 +1,6 @@
 import BDV2 from "./v2";
 import Utils from "./utils";
+import { settings } from "../0globals";
 
 const Constants = {
     EmojiRegex: /<a?\.(\w+)\.(\d+)>/g
@@ -13,6 +14,7 @@ let EmojiModuleQuery = BDModules.get(e => e.default && e.default.queryEmojiResul
 let Messages = BDModules.get(e => e.default && e.default.Messages && e.default.Messages.EMOJI_MATCHING)[0]
 let guildModule = BDModules.get(e => e.default && e.default.getGuild && e.default.getGuilds && !e.default.isFetching)[0]
 let emojiSearch = BDModules.get(e => e.default && e.default.getDisambiguatedEmojiContext)
+const appSettings = Lightcord.Api.settings
 
 export default new class EmojiModule {
     constructor(){
@@ -28,6 +30,13 @@ export default new class EmojiModule {
         if(!guildModule)guildModule = await window.Lightcord.Api.ensureExported(e => e.default && e.default.getGuild && e.default.getGuilds && !e.default.isFetching)
         if(!emojiSearch)emojiSearch = await window.Lightcord.Api.ensureExported(e => e.default && e.default.getDisambiguatedEmojiContext)
 
+        const setting = settings["Emoji Prefix"]
+        const getValue = () => {
+            const value = appSettings.get("BD_"+setting.id, setting.default)
+            if(typeof value !== "string")return setting.default
+            return value
+        }
+
         if(AutocompleteModule && AutoCompletionTemplates && EmojiModuleQuery && Messages && guildModule && emojiSearch){
             console.log(`Patching getAutocompleteOptions of AutoCompletionTemplates`, AutoCompletionTemplates)
             const getAutocompleteOptions = AutoCompletionTemplates.getAutocompleteOptions
@@ -35,7 +44,7 @@ export default new class EmojiModule {
                 const value = getAutocompleteOptions.call(this, ...arguments)
                 value.LIGHTCORD_EMOJIS = {
                     matches(arg1, arg2){
-                        let condition = arg2.length > 1 && "." === arg1
+                        let condition = arg2.length > 1 && getValue() === arg1
                         setEmojiUsable(condition)
                         return condition
                     },
@@ -48,11 +57,11 @@ export default new class EmojiModule {
                             return {
                                 emoji: e,
                                 key: e.id || e.uniqueName || e.name,
-                                sentinel: ".",
+                                sentinel: getValue(),
                                 guild: null != e.guildId ? guildModule.default.getGuild(e.guildId) : null
                             }
                         }), (function(e) {
-                            return "." + e + "."
+                            return getValue() + e + getValue()
                         }))
                     },
                     getPlainText(id, guild){
@@ -137,7 +146,7 @@ export default new class EmojiModule {
                             if(!CustomEmojiModule)CustomEmojiModule = BDModules.get(e => e.CustomEmoji)[0]
                             return React.createElement(CustomEmojiModule.CustomEmoji, {
                                 emoji: {
-                                    name: `.${emoji.name}.`,
+                                    name: `${getValue()}${emoji.name}${getValue()}`,
                                     emojiId: emoji.id,
                                     animated: emoji.animated,
                                     jumboable: arr.length === 1 && content.length === 1

@@ -2,17 +2,43 @@ import { ReactElement } from "react";
 import ReactDOM = require("react-dom")
 import PluginUtilities from "./PluginUtilities";
 
+/**
+ * Set of methods that can help you sometimes.
+ */
 export default new class Utils {
     constructor(){}
 
-    ReactToHTMLElement(ReactElement: ReactElement){    
+    /**
+     * Return an HTML div element from a react element.
+     * @param ReactElement A React Element. Most of the time from `React.createElement()`
+     */
+    ReactToHTMLElement(ReactElement: ReactElement):HTMLDivElement{    
         const element = document.createElement("div")
         ReactDOM.render(ReactElement, element)
         return element
     }
 
+    /**
+     * Still in beta.
+     */
     get PluginUtils(){return PluginUtilities}
 
+    /**
+     * Return the object after going through the path given path
+     * @param obj The initial object
+     * @param path the path
+     * @example
+     * ```js
+     * const object = {
+     *   prop1: {
+     *     prop2: {
+     *       str: "Lightcord"
+     *     }   
+     *   }
+     * }
+     * console.log(Lightcord.Api.Utils.getNestedProps(object, "prop1.prop2.str")) // Lightcord
+     * ```
+     */
     getNestedProps(obj:any, path: string){
         let segments = path.split(".")
         for(let seg of segments){
@@ -21,10 +47,18 @@ export default new class Utils {
         return obj
     }
 
+    /**
+     * Convert a decimal color to hexadecimal.
+     * @param color The color to convert
+     */
     DecimalColorToHex(color:number):string{
-        return "#"+color.toString(16).toUpperCase()
+        return "#"+color.toString(16).toUpperCase().split("").concat([].fill("0", 0, 6)).slice(0, 6).join("")
     }
 
+    /**
+     * Convert a hexadecimal color to decimal.
+     * @param color The color to convert
+     */
     HexColorToDecimal(color:string):number{
         color = color.replace(/[#;]/g, "")
         let res = parseInt(color, 16)
@@ -32,13 +66,21 @@ export default new class Utils {
         return res
     }
 
+    /**
+     * Removes "da-" from classnames patched by BetterDiscord.
+     * @param className The ClassName
+     */
     removeDa(className:string):string{
         if(!className)return className
         return className.split(" ").filter(e => !e.startsWith("da-")).join(" ")
     }
 
+    /**
+     * Taken from https://stackoverflow.com/a/39165137. All credits goes to [Venryx](https://stackoverflow.com/users/2441655/venryx).
+     * @param dom The DOM Element to reverse.
+     * @param traverseUp A number of elemenet to go through.
+     */
     FindReact(dom:Element, traverseUp:number = 0):React.Component|React.PureComponent{
-        // taken from https://stackoverflow.com/questions/29321742/react-getting-a-component-from-a-dom-element-for-debugging#39165137
         const key = Object.keys(dom).find(key=>key.startsWith("__reactInternalInstance$"));
         const domFiber = dom[key];
         if (domFiber == null) return null;

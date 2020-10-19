@@ -24,10 +24,10 @@ export default class SwitchItem extends BDV2.reactComponent {
 
     render() {
         let {text, info} = this.props.data;
-        if(!classnames.find(e => e.startsWith("beta-"))){
-            classnames.push(BDModules.get(e => e.beta && (!e.container && !e.userSettingsVoice))[0].beta)
-        }
         if(this.props.data.experimental){
+            if(!classnames.find(e => e.startsWith("beta-"))){
+                classnames.push(BDModules.get(e => e.beta && (!e.container && !e.userSettingsVoice))[0].beta)
+            }
             info = [
                 info,
                 React.createElement("sup", {className: getClassName("beta")}, "(EXPERIMENTAL)")

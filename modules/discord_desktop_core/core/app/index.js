@@ -56,6 +56,7 @@ function startup(bootstrapModules) {
   settings.injectSettingsBackend(appSettings.getSettings());
   require('./discord_native/browser/spellCheck');
   const windowNative = require('./discord_native/browser/window');
+  require("./lightcordMainProcess")
 
   // expose globals that will be imported by the webapp
   // global.releaseChannel is set in bootstrap

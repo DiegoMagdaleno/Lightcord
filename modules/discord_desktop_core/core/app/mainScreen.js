@@ -8,6 +8,28 @@ exports.webContentsSend = webContentsSend;
 exports.init = init;
 exports.handleSingleInstance = handleSingleInstance;
 exports.setMainWindowVisible = setMainWindowVisible;
+exports.setBlurType = setBlurType
+exports.setVibrancy = setVibrancy
+
+const VIBRANCY_TYPES = [
+  "titlebar", 
+  "selection", 
+  "menu", 
+  "popover", 
+  "sidebar", 
+  "header", 
+  "sheet", 
+  "window", 
+  "hud", 
+  "fullscreen-ui", 
+  "tooltip", 
+  "content", 
+  "under-window", 
+  "under-page", 
+  "none"
+]
+
+const BLUR_TYPES = ["blurbehind", "acrylic", "transparent"]
 
 var glasstron = require("glasstron")
 
@@ -163,6 +185,46 @@ function saveWindowConfig(browserWindow) {
   } catch (e) {
     console.error(e);
   }
+}
+
+function setBlur(blur){
+  if(!mainWindow)return
+  if(typeof blur !== "boolean")throw new TypeError("INVALID ARGUMENT: blur")
+  mainWindow.setBlur(blur)
+}
+
+function setVibrancy(vibrancy){
+  if(!mainWindow)return
+  if(!VIBRANCY_TYPES.includes(vibrancy))throw new TypeError("INVALID ARGUMENT: vibrancy")
+  mainWindow.setVibrancy(vibrancy)
+  settings.set("GLASSTRON_VIBRANCY", vibrancy)
+}
+
+function setBlurType(blurType){
+  if(!mainWindow)return
+  if(!BLUR_TYPES.includes(blurType))throw new TypeError("INVALID ARGUMENT: blurType")
+  mainWindow.blurType = blurType
+  settings.set("GLASSTRON_BLUR", blurType)
+}
+
+function setDefaultBlur(){
+  if(!mainWindow)return
+
+  let blurType = settings.get("GLASSTRON_BLUR", "blurbehind")
+  if(!BLUR_TYPES.includes(blurType)){
+    blurType = "blurbehind"
+    settings.set("GLASSTRON_BLUR", blurType)
+  }
+  setBlurType(blurType)
+  
+  let vibrancy = settings.get("GLASSTRON_VIBRANCY", "fullscreen-ui")
+  if(!VIBRANCY_TYPES.includes(vibrancy)){
+    vibrancy = "fullscreen-ui"
+    settings.set("GLASSTRON_VIBRANCY", vibrancy)
+  }
+  setVibrancy(vibrancy)
+
+  setBlur(true)
 }
 
 function setWindowVisible(isVisible, andUnminimize) {
@@ -341,7 +403,6 @@ function launchMainAppWindow(isVisible) {
 
   const mainWindowOptions = {
     title: 'Lightcord',
-    backgroundColor: getBackgroundColor(),
     width: DEFAULT_WIDTH,
     height: DEFAULT_HEIGHT,
     minWidth: MIN_WIDTH,
@@ -364,7 +425,7 @@ function launchMainAppWindow(isVisible) {
         preload: _path.join(__dirname, 'mainScreenPreload.js')
       })
     },
-    icon: _path.join(__dirname, 'discord.png')
+    icon: _path.join(__dirname, "images", 'discord.png')
   };
 
   if (process.platform === 'linux') {
@@ -373,17 +434,14 @@ function launchMainAppWindow(isVisible) {
 
   if(!settings.get("NO_WINDOWS_BOUND", false))applyWindowBoundsToConfig(mainWindowOptions);
 
-  mainWindow = new electron.BrowserWindow(mainWindowOptions);
+  const useGlasstron = settings.get("GLASSTRON", true)
+  const BrowserWindow = useGlasstron ? glasstron.BrowserWindow : electron.BrowserWindow
+  mainWindow = new BrowserWindow(mainWindowOptions);
   mainWindowId = mainWindow.id;
   global.mainWindowId = mainWindowId;
-  if(settings.get("GLASSTRON", true)){
-    glasstron.update(mainWindow, {
-      windows: {blurType: 'blurbehind'},
-      macos: {vibrancy: 'fullscreen-ui'},
-      linux: {requestBlur: true} // KWin
-    });
-  }
-  
+
+  if(useGlasstron)setDefaultBlur()
+
   mainWindow.webContents.session.webRequest.onHeadersReceived(function(details, callback) {
     if (!details.responseHeaders["content-security-policy-report-only"] && !details.responseHeaders["content-security-policy"]) return callback({cancel: false});
     delete details.responseHeaders["content-security-policy-report-only"];

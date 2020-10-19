@@ -1,1 +1,1 @@
-module.exports = require('./discord_hook.node');
+module.exports = require('./discord_hook_'+process.platform+'.node');

@@ -20,6 +20,7 @@
     "node_modules\\ws\\lib\\websocket.js", 
     "RPCIPC.js", 
     "RPCWebSocket.js", 
+    "safeEmitter.js", 
     "index.js", 
     "manifest.json"
   ]

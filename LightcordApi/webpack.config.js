@@ -1,5 +1,6 @@
 const path = require("path");
 const TerserPlugin = require("terser-webpack-plugin")
+const child_process = require("child_process")
 
 module.exports = {
     mode: "development",
